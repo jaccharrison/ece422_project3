@@ -2,7 +2,7 @@
 ;;; custom_lcd.asm:
 ;;; Custom assembly functions for the MSP430
 ;;; ----------------------------------------------------------------------------
-	.cdecls C,LIST,"msp430.h"
+	.cdecls C,LIST,"msp430.h","myLCD.h"
 ;;; Symbolic constant ----------------------------------------------------------
 STATE:	.equ R7		; Tracks whether we are currently testing
 	
