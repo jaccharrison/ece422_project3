@@ -175,7 +175,7 @@ CLR_EXIT:
 PRINT:
 	;; Print 'F:' at the beginning of the LCD
 	mov #0x46,R12		; Move 'F' into 1st function arg
-	mov #0x01,R13		; Print 'F' in LCD posn 2
+	mov #0x02,R13		; Print 'F' in LCD posn 2
 	call #myLCD_showChar
 	mov #LCD_UPDATE,R12	; Move memory op for LCD into function arg 1
 	mov #LCD_A2COL,R13	; Move posn 2 colon into function arg 2
