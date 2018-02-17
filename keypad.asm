@@ -20,23 +20,26 @@ BUTTON_INPUT_LOOP:
   jnz BUTTON_INPUT_LOOP ; Loop if one button is being pressed
   mov R13,R12 ; Take last non-zero input
   pop R13 ; Restore R13
-  call DECODE_INPUT ; R12 now contains proper ASCII character
+  call #DECODE_INPUT ; R12 now contains proper ASCII character
   ret
 
 ;;; Get input
 SCAN:
+  bic.b #BIT7,&P2OUT
   bis.b #BIT4+BIT5,&P2OUT ; 3/6/9/# column is lo
   mov.b &P2IN,R12 ; Prepare to rotate column
   and.b #0xF,R12 ; Clear upper 4 bits
   rpt #8 ; Offset by 4 bits
   rla R12 ; Rotate left
   push R12 ; Save column to stack
+  bic.b #BIT5,&P2OUT
   bis.b #BIT4+BIT7,&P2OUT ; 2/5/8/0 column is lo
   mov.b &P2IN,R12 ; Prepare to rotate column
   and.b #0xF,R12 ; Clear upper 4 bits
   rpt #4 ; Offset by 4 bits
   rla R12 ; Rotate left
   push R12
+  bic.b #BIT4,&P2OUT
   bis.b #BIT5+BIT7,&P2OUT ; 1/4/7/astrk column is lo
   mov.b &P2IN,R12
   and.b #0xF,R12 ; Clear upper 4 bits
@@ -51,6 +54,7 @@ DECODE_INPUT:
   ;;; First check which third we are in
   inv R12
   and #0x0FFF,R12
+
   bit #0x00F,R12
   jnz L_THIRD
   bit #0x0F0,R12
@@ -63,19 +67,19 @@ H_H_THIRD:
   bit #0x400,R12
   jnz L_H_H_THIRD
 H_H_H_THIRD:
-  mov #0x23,R12 ; # was pressed
+  mov #-2,R12 ; # was pressed, return -2
   ret
 L_H_H_THIRD:
-  mov #0x39,R12 ; 9 was pressed
+  mov #9,R12 ; 9 was pressed
   ret
 L_H_THIRD:
   bit #0x100,R12
   jnz L_L_H_THIRD
 H_L_H_THIRD:
-  mov #0x36,R12 ; 6 was pressed
+  mov #6,R12 ; 6 was pressed
   ret
 L_L_H_THIRD:
-  mov #0x33,R12 ; 3 was pressed
+  mov #3,R12 ; 3 was pressed
   ret
 M_THIRD:
   bit #0x030,R12
@@ -84,19 +88,19 @@ H_M_THIRD:
   bit #0x040,R12
   jnz L_H_M_THIRD
 H_H_M_THIRD:
-  mov #0x30,R12 ; 0 was pressed
+  clr R12 ; 0 was pressed
   ret
 L_H_M_THIRD:
-  mov #0x38,R12 ; 8 was pressed
+  mov #8,R12 ; 8 was pressed
   ret
 L_M_THIRD:
   bit #0x010,R12
   jnz L_L_M_THIRD
 H_L_M_THIRD:
-  mov #0x35,R12 ; 5 was pressed
+  mov #5,R12 ; 5 was pressed
   ret
 L_L_M_THIRD:
-  mov #0x32,R12 ; 2 was pressed
+  mov #2,R12 ; 2 was pressed
   ret
 L_THIRD:
   bit #0x003,R12
@@ -105,19 +109,19 @@ H_L_THIRD:
   bit #0x004,R12
   jnz L_H_L_THIRD
 H_H_L_THIRD:
-  mov #0x2A,R12 ; Asterisk was pressed
+  mov #-1,R12 ; Asterisk was pressed, return -1
   ret
 L_H_L_THIRD:
-  mov #0x37,R12 ; 7 was pressed
+  mov #7,R12 ; 7 was pressed
   ret
 L_L_THIRD:
   bit #0x001,R12
   jnz L_L_L_THIRD
 H_L_L_THIRD:
-  mov #0x34,R12 ; 4 was pressed
+  mov #4,R12 ; 4 was pressed
   ret
 L_L_L_THIRD:
-  mov #0x31,R12 ; 1 was pressed
+  mov #1,R12 ; 1 was pressed
   ret
 
 ;;; TA1 ISR
