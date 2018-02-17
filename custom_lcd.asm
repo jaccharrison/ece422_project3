@@ -174,7 +174,7 @@ CLR_EXIT:
 PRINT:
 	;; Print 'F:' at the beginning of the LCD
 	mov #0x46,R12		; Move 'F' into 1st function arg
-	mov #0x01,R13		; Print 'F' in LCD posn 1
+	mov #0x01,R13		; Print 'F' in LCD posn 2
 	call #myLCD_showChar
 	mov #LCD_UPDATE,R12	; Move memory op for LCD into function arg 1
 	mov #LCD_A2COL,R13	; Move posn 2 colon into function arg 2
@@ -188,19 +188,29 @@ PRINT:
 	mov #0x06,R13		; Specify LCD posn 6
 	call #myLCD_showChar
 
-	mov R5,R12		; Create working copy of R5 in R12
-	and #0x00F0,R12	; Mask off all but bits 4-7 of R12
+	mov R5,R14		; Create working copy of R5 in R14
+	and #0x00F0,R14	; Mask off all but bits 4-7 of R14
+	mov #0x32,R12		; Pre-emptively move space into R12
+	tst R14		; R14 == 0?
+	jz PRINT_N1		; If zero, print space in tens digit
+	mov R14,R12		; Not zero, need to print digit, move to R12
 	rpt #0x04		; Repeat next instruction 4 times
 	rra R12		; Shift into lowest nibble
 	add #0x30,R12		; Convert to char representation of number
+PRINT_N1:
 	mov #0x05,R13		; Specify LCD posn 5
 	call #myLCD_showChar
 
-	mov R5,R12		; Create working copy of R5 in R12
-	and #0x0F00,R12	; Mask off all but bits 8-11 of R12
+	mov R5,R14		; Create working copy of R5 in R14
+	and #0x0F00,R12	; Mask off all but bits 8-11 of R14
+	mov #0x32,R12		; Pre-emptively move space into R12
+	tst R14		; R14 == 0?
+	jz PRINT_N2		; If zero, print space in hundreds digit
+	mov R14,R12		; Not zero, need to print digit, move to R12
 	rpt #0x08		; Repeat next instruction 8 times
 	rra R12		; Shift into lowest nibble
 	add #0x30,R12		; Convert to char representation of number
+PRINT_N2:
 	mov #0x04,R13		; Specify LCD posn 4
 	call #myLCD_showChar
 
