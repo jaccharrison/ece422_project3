@@ -198,8 +198,8 @@ PRINT:
 	call #myLCD_showChar
 
 	mov R5,R14		; Create working copy of R5 in R14
-	and #0x0F00,R12	; Mask off all but bits 8-11 of R14
-	mov #0x32,R12		; Pre-emptively move space into R12
+	and #0x0F00,R14	; Mask off all but bits 8-11 of R14
+	mov #0x20,R12		; Pre-emptively move space into R12
 	tst R14		; R14 == 0?
 	jz PRINT_N2		; If zero, print space in hundreds digit
 	mov R14,R12		; Not zero, need to print digit, move to R12
