@@ -32,15 +32,15 @@ RESET:
 	mov #__STACK_END,SP	; Initialize stackpointer
 	mov #WDTPW|WDTHOLD,&WDTCTL	; Stop watchdog timer
 ;;; Configure I/O --------------------------------------------------------------
-	mov #~LOCKLPM5,&PM5CTL0	; Unlock GPIO pins
+	bic #LOCKLPM5,&PM5CTL0	; Unlock GPIO pins
 	mov.b #OUTPUT_BITS,&P2DIR ; 2.0-2.3 are inputs, 2.4,2.5,2.7 are outputs
 	mov.b #INPUT_BITS,&P2OUT ; Outputs are lo, resistors are pull up
-  mov.b #INPUT_BITS,&P2REN; inputs use pull down resistors
+	mov.b #INPUT_BITS,&P2REN; inputs use pull down resistors
 
 	;; Set button interrupt mode
 	mov.b #INPUT_BITS,&P2IES ; Trigger interrupt on ? transition
-  mov.b #INPUT_BITS,&P2IE ; Enable interrupts for 3 input pins
-  clr &P2IFG ; Clear pending port 2 interrupts
+	mov.b #INPUT_BITS,&P2IE ; Enable interrupts for 3 input pins
+	clr &P2IFG ; Clear pending port 2 interrupts
 
 	;; Configure 1.0 for TA0's output unit QW
 	;; TODO
@@ -53,12 +53,12 @@ RESET:
 	;; Timer A1 - used for button polling delay
 	mov #TASSEL__ACLK,&TA1CTL ; Use ACLK
 	mov #4095,&TA1CCR0 ; Fires every 1/8 sec
-  mov #CCIE,&TA1CCTL0 ; Enable timer interrupts
+	mov #CCIE,&TA1CCTL0 ; Enable timer interrupts
 ;;; Prepare the LCD to receive commands & configure LFXT -----------------------
 	call #initClocks	; Initializes LFXT
 	;call #myLCD_init	; Prepare LCD to receive commands
 ;;; Begin the main loop --------------------------------------------------------
-  ;; Display instructions?
+	;; Display instructions?
 
   ;; Take in numbers until * is hit
   nop

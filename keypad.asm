@@ -1,4 +1,8 @@
-  .cdecls C,LIST,"msp430.h"       ; Device header file
+  .cdecls C,LIST,"msp430.h"	; Device header file
+;;; Symbolic constants ---------------------------------------------------------
+VALUE:	.equ R4		; R4 holds numeric value entered by users
+BCD_VALS:	.equ R5	; R5 holds BCD numbers entered by user
+DIV16:	.equ R6		; R6 is a flag set when users enter freq < 16Hz
 
   .def GET_KEY
 
@@ -9,6 +13,7 @@
 GET_KEY:
   push R13 ; Make space
   call #SCAN ; Get input into R12
+
 BUTTON_INPUT_LOOP:
   mov R12,R13 ; Store into R13
   bis #MC__UP+TACLR,&TA1CTL ; Start delay timer
@@ -49,11 +54,11 @@ SCAN:
 
 ;;; Precondition: R12 is in the form XXXXXXXX------------ where X is don't care
 ;;;               and exactly one - is high
-;;; Postcondition: R12 contains the character's ASCII value
+;;; Postcondition: R12 contains the numeric value of the key returned
 DECODE_INPUT:
   ;;; First check which third we are in
   inv R12
-  and #0x0FFF,R12
+  and #0x0FFF,R12		; Mask off high-order bits
 
   bit #0x00F,R12
   jnz L_THIRD
