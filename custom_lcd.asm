@@ -4,7 +4,8 @@
 ;;; ----------------------------------------------------------------------------
 	.cdecls C,LIST,"msp430.h"
 ;;; Symbolic constant ----------------------------------------------------------
-
+STATE:	.equ R7		; Tracks whether we are currently testing
+	
 	;; Make routine names defined in file known to linker
 	.def SCROLL_TXT
 	.def CLR_LCD
