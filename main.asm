@@ -7,35 +7,36 @@
 ;;; ----------------------------------------------------------------------------
 	.cdecls C,LIST,"msp430.h","myLCD.h" ; Include device header file
 ;;; Symbolic constants ---------------------------------------------------------
+SCROLL_PAUSE:	.equ 1024  ; Clock cycles to pause when scrolling text
 INPUT_BITS:  .equ BIT0+BIT1+BIT2+BIT3
 OUTPUT_BITS: .equ BIT4+BIT5+BIT7
 BCD_VALS:    .equ R5
+STATE:       .equ R7	     ; Tracks whether we are currently testing
 
-	.def RESET	; Make program entry point known to linker
+	.def RESET	    ; Make program entry point known to linker
 	.def OUTPUT_BITS
 
-  .ref CLR_LCD	; Clears the LCD by writing spaces
-	.ref initClocks ; Configures LFXT
-	.ref myLCD_init	; Prepare LCD to receive commands
-	.ref myLCD_showChar	; C function that prints a char on the LCD
+  .ref CLR_LCD		   ; Clears the LCD by writing spaces
+	.ref initClocks    ; Configures LFXT
+	.ref myLCD_init    ; Prepare LCD to receive commands
+	.ref myLCD_showChar ; C function that prints a char on the LCD
 	.ref myLCD_showSymbol ; C function used to put a decimal point on LCD
-	.ref GET_KEY ; Returns the struck key
-  .ref PRINT
-  .ref DIV_DWORDS
+	.ref GET_KEY	      ; Returns the struck key
+	.ref PRINT
+	.ref DIV_DWORDS
 ;;; ----------------------------------------------------------------------------
 	.data
-;;; ----------------------------------------------------------------------------
-;;; .bss
+inst:	.cstring "ENTER FREQ LESS THAN 999HZ"
 ;;; ----------------------------------------------------------------------------
 	.text	      ; Assemble into program memory.
-	.retain	      ; Override ELF conditional linking
+	.retain	; Override ELF conditional linking
 	.retainrefs   ; Retain sections that reference current section
 ;;; ----------------------------------------------------------------------------
 RESET:
-	mov #__STACK_END,SP	; Initialize stackpointer
-	mov #WDTPW|WDTHOLD,&WDTCTL	; Stop watchdog timer
+	mov #__STACK_END,SP	   ; Initialize stackpointer
+	mov #WDTPW|WDTHOLD,&WDTCTL ; Stop watchdog timer
 ;;; Reset global variables------------------------------------------------------
-  clr BCD_VALS ; TODO: ADD OTHER REGISTERS
+	clr BCD_VALS ; TODO: ADD OTHER REGISTERS
 ;;; Configure I/O --------------------------------------------------------------
 	bic #LOCKLPM5,&PM5CTL0	; Unlock GPIO pins
 	mov.b #OUTPUT_BITS,&P2DIR ; 2.0-2.3 are inputs, 2.4,2.5,2.7 are outputs
@@ -47,7 +48,7 @@ RESET:
 	mov.b #INPUT_BITS,&P2IE ; Enable interrupts for 3 input pins
 	clr &P2IFG ; Clear pending port 2 interrupts
 
-	;; Configure 1.0 for TA0's output unit QW
+	;; Configure 1.0 for TA0's output unit
 	bis.b #BIT0,&P1DIR
 	bis.b #BIT0,&P1SEL0
 ;;; Configure Timers -----------------------------------------------------------
@@ -55,36 +56,40 @@ RESET:
 	mov #TASSEL__SMCLK,&TA0CTL
 	;; Timer A1 - used for button polling delay
 	mov #TASSEL__ACLK,&TA1CTL ; Use ACLK
-	mov #4095,&TA1CCR0 ; Fires every 1/8 sec ish
-	mov #CCIE,&TA1CCTL0 ; Enable timer interrupts
+	mov #4095,&TA1CCR0	; Fires approximately 8 times per sec
+	mov #CCIE,&TA1CCTL0	; Enable timer interrupts
+	;; Timer A2 - controls rate of scrolling messages
+	mov #SCROLL_PAUSE,&TA2CCR0 ; Count to SCROLL_PAUSE before scrolling txt
+	mov #TASSEL_1+MC_1+ID_3,&TA2CTL ; Source ACLK, up mode, divide clk by 8
 ;;; Prepare the LCD to receive commands & configure LFXT -----------------------
 	call #initClocks	; Initializes LFXT
+	call #myLCD_init	; Prepare LCD to receive commands
 	;; Begin custom LCD changes
-  call #myLCD_init  ; Prepare LCD to receive commands
-	bic #LCDON,&LCDCCTL0 ; Turn off LCD
+	bic #LCDON,&LCDCCTL0 ; Turn off LCD to reconfigure pins
 	bic #LCDS40+LCDS42+LCDS43,LCDCPCTL2 ; Undo pin muxing for P2.4/5/7
-  bis #LCDON,&LCDCCTL0 ; Turn on LCD
-;;; Begin the main loop --------------------------------------------------------
-	;; Display instructions?
+	bis #LCDON,&LCDCCTL0 ; Turn on LCD
+;;; Print instructions - exits if a button is pressed while printing -----------
+	mov #inst,R12		; Move instruction into function argument
+	call #SCROLL_TXT	; Scroll instruction across LCD
 
 GET_FREQ:
   push #-1 ; Need to know when done
 NEXT_DIGIT:
-  ;; Take in numbers until * is hit
-  clr.b &P2IFG
-  mov.b #INPUT_BITS,&P2IE ; Re-enable interrupts for 3 input pins
-  nop
-  bis #LPM3+GIE,SR ; Enter low power mode 3 until a key is struck
-  nop
-  call #GET_KEY ; Pressed key will be in R12 ; R12 gets clobbered
-  tst R12 ; Did we hit either enter key?
-  jn CALC_FREQ ; Process new freqency
-  push R12 ; Save keystroke
-  rpt #4
-  rla BCD_VALS ; Make room for new digit
-  add R12,BCD_VALS ; Add in new digit
-  and #0xFFF,BCD_VALS ; Store only 3 digits
-  push R12
+	;; Take in numbers until * is hit
+	clr.b &P2IFG
+	mov.b #INPUT_BITS,&P2IE ; Re-enable interrupts for 3 input pins
+	nop
+	bis #LPM3+GIE,SR ; Enter low power mode 3 until a key is struck
+	nop
+	call #GET_KEY ; Pressed key will be in R12 ; R12 gets clobbered
+	tst R12 ; Did we hit either enter key?
+	jn CALC_FREQ ; Process new freqency
+	push R12 ; Save keystroke
+	rpt #4
+	rla BCD_VALS ; Make room for new digit
+	add R12,BCD_VALS ; Add in new digit
+	and #0xFFF,BCD_VALS ; Store only 3 digits
+	push R12
   call #PRINT
   pop R12
   bic.b #OUTPUT_BITS,&P2OUT
