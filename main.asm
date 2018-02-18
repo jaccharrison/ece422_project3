@@ -20,7 +20,8 @@ BCD_VALS:    .equ R5
 	.ref myLCD_showChar	; C function that prints a char on the LCD
 	.ref myLCD_showSymbol ; C function used to put a decimal point on LCD
 	.ref GET_KEY ; Returns the struck key
-    .ref PRINT
+  .ref PRINT
+  .ref DIV_DWORDS
 ;;; ----------------------------------------------------------------------------
 	.data
 ;;; ----------------------------------------------------------------------------
@@ -47,27 +48,31 @@ RESET:
 	clr &P2IFG ; Clear pending port 2 interrupts
 
 	;; Configure 1.0 for TA0's output unit QW
-	;; TODO
-
-	;; Sets port J to LFXT mode
-	bic #BIT4+BIT5,&PJDIR
-	bis #BIT4+BIT5,&PJSEL0
+	bis.b #BIT0,&P1DIR
+	bis.b #BIT0,&P1SEL0
 ;;; Configure Timers -----------------------------------------------------------
 	;; Timer A0 - used to blink Red LED on P1.0
+	mov #TASSEL__SMCLK,&TA0CTL
 	;; Timer A1 - used for button polling delay
 	mov #TASSEL__ACLK,&TA1CTL ; Use ACLK
-	mov #4095,&TA1CCR0 ; Fires every 1/8 sec
+	mov #4095,&TA1CCR0 ; Fires every 1/8 sec ish
 	mov #CCIE,&TA1CCTL0 ; Enable timer interrupts
 ;;; Prepare the LCD to receive commands & configure LFXT -----------------------
-	;call #initClocks	; Initializes LFXT
-	;call #myLCD_init	; Prepare LCD to receive commands
+	call #initClocks	; Initializes LFXT
+	;; Begin custom LCD changes
+  call #myLCD_init  ; Prepare LCD to receive commands
+	bic #LCDON,&LCDCCTL0 ; Turn off LCD
+	bic #LCDS40+LCDS42+LCDS43,LCDCPCTL2 ; Undo pin muxing for P2.4/5/7
+  bis #LCDON,&LCDCCTL0 ; Turn on LCD
 ;;; Begin the main loop --------------------------------------------------------
 	;; Display instructions?
 
-  GET_FREQ:
+GET_FREQ:
   push #-1 ; Need to know when done
 NEXT_DIGIT:
   ;; Take in numbers until * is hit
+  clr.b &P2IFG
+  mov.b #INPUT_BITS,&P2IE ; Re-enable interrupts for 3 input pins
   nop
   bis #LPM3+GIE,SR ; Enter low power mode 3 until a key is struck
   nop
@@ -79,10 +84,10 @@ NEXT_DIGIT:
   rla BCD_VALS ; Make room for new digit
   add R12,BCD_VALS ; Add in new digit
   and #0xFFF,BCD_VALS ; Store only 3 digits
+  push R12
   call #PRINT
+  pop R12
   bic.b #OUTPUT_BITS,&P2OUT
-  clr.b &P2IFG
-  mov.b #INPUT_BITS,&P2IE ; Re-enable interrupts for 3 input pins
   jmp NEXT_DIGIT ; Read in another digit
 
 CALC_FREQ:
@@ -119,6 +124,8 @@ CLR_STK:
   tst R13 ; Exit if read -1
   jge CLR_STK
 SET_FREQ:
+
+  bis #OUTMOD_7,&TA0CCTL1
 
 DEBUG_LOOP:
   jmp DEBUG_LOOP

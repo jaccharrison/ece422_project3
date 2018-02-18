@@ -1,14 +1,14 @@
 	.cdecls C,LIST,"msp430fr6989.h"       ; Device header file
 
-  .def DIVBYTES
-	.def DIVWORDS
+  .def DIV_WORDS
+	.def DIV_DWORDS
 
 	.text
 
 ;;; Used http://www.tofla.iconbar.com/tofla/arm/arm02/index.htm as reference
 ;;; Precondition: Dividend in R12 and Divisor in R13
 ;;; Postcondition: Quotient in R12, remainder in R13
-DIVBYTES:
+DIV_WORDS:
   pushm #2,R15      ; Make space
   mov R13,R14     ; Move operands
   mov R12,R13
@@ -36,7 +36,7 @@ NOSB:
 ;;; Used http://www.tofla.iconbar.com/tofla/arm/arm02/index.htm as reference
 ;;; Precondition: Dividend in R12/R13 and Divisor in R14/R15 (big-endian, sorry)
 ;;; Postcondition: Quotient in R12/13, remainder in R14/15 (both big-endian)
-DIVWORDS:
+DIV_DWORDS:
 	pushm #4,R11			; Make space
 	mov R12,R10			; Move operands
 	mov R13,R11
