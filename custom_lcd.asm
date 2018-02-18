@@ -207,7 +207,7 @@ PRINT:
 	rra R12		; Shift into lowest nibble
 	add #0x30,R12		; Convert to char representation of number
 PRINT_N2:
-...	mov #0x04,R13		; Specify LCD posn 4
+  mov #0x04,R13		; Specify LCD posn 4
 	call #myLCD_showChar
 
 	ret
