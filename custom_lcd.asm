@@ -173,15 +173,6 @@ CLR_EXIT:
 ;;; If one of the BCD is zero, the LCD will display a space character instead so
 ;;; that it prints '  1' instead of '001'
 PRINT:
-	;; Print 'F:' at the beginning of the LCD
-	mov #0x46,R12		; Move 'F' into 1st function arg
-	mov #0x02,R13		; Print 'F' in LCD posn 2
-	call #myLCD_showChar
-	mov #LCD_UPDATE,R12	; Move memory op for LCD into function arg 1
-	mov #LCD_A2COL,R13	; Move posn 2 colon into function arg 2
-	clr R14		; Specify main memory register as funct arg 3
-	call #myLCD_showSymbol	; Print colon at position 2
-
 	;; Print BCD numbers in posns 4, 5, and 6
 	mov R5,R12		; Create working copy of R5 in R12
 	and #0x000F,R12	; Mask off all but lowest 4 bits of R12
@@ -209,7 +200,6 @@ PRINT:
 PRINT_N2:
   mov #0x04,R13		; Specify LCD posn 4
 	call #myLCD_showChar
-
 	ret
 
 ;;; Interrupt vector definitions

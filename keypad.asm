@@ -11,46 +11,59 @@ DIV16:	.equ R6		; R6 is a flag set when users enter freq < 16Hz
   .text
 
 GET_KEY:
-  push R13 ; Make space
-  call #SCAN ; Get input into R12
+	;; Take initial scan
+	push R13      ; Push contents of R13 to create a free register
+	call #SCAN    ; Get input into R12
 
 BUTTON_INPUT_LOOP:
-  mov R12,R13 ; Store into R13
-  bis #MC__UP+TACLR,&TA1CTL ; Start delay timer
-  nop
-  bis #LPM3+GIE,SR ; Enter low power mode
-  nop
-  call #SCAN ; Get new input into R12
-  cmp #0x0FFF,R12 ; Exit loop if no buttons are being pressed
-  jnz BUTTON_INPUT_LOOP ; Loop if one button is being pressed
-  mov R13,R12 ; Take last non-zero input
-  pop R13 ; Restore R13
-  call #DECODE_INPUT ; R12 now contains proper ASCII character
-  ret
+	mov R12,R13		; Create working copy of input in R13
+	bis #MC__UP+TACLR,&TA1CTL ; Start delay timer
+	nop
+	bis #LPM3+GIE,SR	; Enter low power mode
+	nop
+	;; Take another scan for comparison against the first one
+	call #SCAN		; Get new input into R12
+	cmp #0x0FFF,R12	; If all are high, not buttons are pressed
+	jnz BUTTON_INPUT_LOOP	; If not zero, check our input again
+	mov R13,R12		; Take last non-zero input
+	pop R13		; Restore R13
+	call #DECODE_INPUT      ; Decodes 12 input bits into a numeric value
+	ret
 
 ;;; Get input
 SCAN:
-  bic.b #BIT7,&P2OUT
-  bis.b #BIT4+BIT5,&P2OUT ; 3/6/9/# column is lo
-  mov.b &P2IN,R12 ; Prepare to rotate column
-  and.b #0xF,R12 ; Clear upper 4 bits
-  rpt #8 ; Offset by 4 bits
-  rla R12 ; Rotate left
-  push R12 ; Save column to stack
-  bic.b #BIT5,&P2OUT
-  bis.b #BIT4+BIT7,&P2OUT ; 2/5/8/0 column is lo
-  mov.b &P2IN,R12 ; Prepare to rotate column
-  and.b #0xF,R12 ; Clear upper 4 bits
-  rpt #4 ; Offset by 4 bits
-  rla R12 ; Rotate left
-  push R12
-  bic.b #BIT4,&P2OUT
-  bis.b #BIT5+BIT7,&P2OUT ; 1/4/7/astrk column is lo
-  mov.b &P2IN,R12
-  and.b #0xF,R12 ; Clear upper 4 bits
-  add @SP+,R12
-  add @SP+,R12 ; R12 now contains #9630852A741 in that order, bits 11 dt 0
-  ret
+	;; Set 3, 6, 9, # column lo
+	bic.b #BIT7,&P2OUT
+	bis.b #BIT4+BIT5,&P2OUT
+	;; Store row inputs when 369# column is low
+	mov.b &P2IN,R12	; Create working copy of P2IN in R12
+	and.b #0xF,R12		; We only care about P2.0-P2.3
+	rpt #8			; Move inputs into bits 8-11 of R12
+	rla R12
+	push R12		; Save inputs from 369# column on stack
+
+	;; Set 2, 5, 8, 0 column lo
+	bic.b #BIT5,&P2OUT
+	bis.b #BIT4+BIT7,&P2OUT
+	;; Store row inputs when 2580 column is low
+	mov.b &P2IN,R12	; Create working copy of P2IN in R12
+	and.b #0xF,R12		; Clear all but low four bits
+	rpt #4			; Move inputs into bits 4-7 of R12
+	rla R12
+	push R12		; Push inputs from 2580 column on stack
+
+	;; Set 1, 4, 7, * column lo
+	bic.b #BIT4,&P2OUT
+	bis.b #BIT5+BIT7,&P2OUT ; 1/4/7/astrk column is lo
+	;; Store row inputs when 147* column is low
+	mov.b &P2IN,R12	; Create working copy of P2IN in R12
+	and.b #0xF,R12		; Clear all but low four bits
+
+	;; Load results of polling all three columns into R12
+	add @SP+,R12		; Bits 4-7 of R12 are now from 2580 column
+	add @SP+,R12		; Bits 8-11 of R12 are now from 369# column
+
+	ret
 
 ;;; Precondition: R12 is in the form XXXXXXXX------------ where X is don't care
 ;;;               and exactly one - is high
